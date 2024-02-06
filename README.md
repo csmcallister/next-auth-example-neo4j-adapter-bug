@@ -1,112 +1,188 @@
-> The example repository is maintained from a [monorepo](https://github.com/nextauthjs/next-auth/tree/main/apps/examples/nextjs). Pull Requests should be opened against [`nextauthjs/next-auth`](https://github.com/nextauthjs/next-auth).
+## Neo4jAdapter Bug Report
 
-<p align="center">
-   <br/>
-   <a href="https://authjs.dev" target="_blank"><img width="150px" src="https://authjs.dev/img/logo/logo-sm.png" /></a>
-   <h3 align="center">NextAuth.js Example App</h3>
-   <p align="center">
-   Open Source. Full Stack. Own Your Data.
-   </p>
-   <p align="center" style="align: center;">
-      <a href="https://npm.im/next-auth">
-        <img alt="npm" src="https://img.shields.io/npm/v/next-auth?color=green&label=next-auth">
-      </a>
-      <a href="https://bundlephobia.com/result?p=next-auth-example">
-        <img src="https://img.shields.io/bundlephobia/minzip/next-auth?label=next-auth" alt="Bundle Size"/>
-      </a>
-      <a href="https://www.npmtrends.com/next-auth">
-        <img src="https://img.shields.io/npm/dm/next-auth?label=next-auth%20downloads" alt="Downloads" />
-      </a>
-      <a href="https://npm.im/next-auth">
-        <img src="https://img.shields.io/badge/npm-TypeScript-blue" alt="TypeScript" />
-      </a>
-   </p>
-</p>
+To reproduce the bug `Neo4jError: You cannot begin a transaction on a session with an open transaction; either run from within the transaction or use a different session`, follow these steps.
 
-## Overview
-
-NextAuth.js is a complete open source authentication solution.
-
-This is an example application that shows how `next-auth` is applied to a basic Next.js app.
-
-The deployed version can be found at [`next-auth-example.vercel.app`](https://next-auth-example.vercel.app)
-
-### About NextAuth.js
-
-NextAuth.js is an easy to implement, full-stack (client/server) open source authentication library originally designed for [Next.js](https://nextjs.org) and [Serverless](https://vercel.com). Our goal is to [support even more frameworks](https://github.com/nextauthjs/next-auth/issues/2294) in the future.
-
-Go to [next-auth.js.org](https://authjs.dev) for more information and documentation.
-
-> _NextAuth.js is not officially associated with Vercel or Next.js._
-
-## Getting Started
-
-### 1. Clone the repository and install dependencies
-
+1. install deps
 ```
-git clone https://github.com/nextauthjs/next-auth-example.git
-cd next-auth-example
-npm install
+npm i
 ```
 
-### 2. Configure your local environment
+2. Create a `.env.local` for a Google (or likely any other) provider:
 
-Copy the .env.local.example file in this directory to .env.local (which will be ignored by Git):
-
-```
-cp .env.local.example .env.local
-```
-
-Add details for one or more providers (e.g. Google, Twitter, GitHub, Email, etc).
-
-#### Database
-
-A database is needed to persist user accounts and to support email sign in. However, you can still use NextAuth.js for authentication without a database by using OAuth for authentication. If you do not specify a database, [JSON Web Tokens](https://jwt.io/introduction) will be enabled by default.
-
-You **can** skip configuring a database and come back to it later if you want.
-
-For more information about setting up a database, please check out the following links:
-
-- Docs: [authjs.dev/reference/core/adapters](https://authjs.dev/reference/core/adapters)
-
-### 3. Configure Authentication Providers
-
-1. Review and update options in `auth.ts` as needed.
-
-2. When setting up OAuth, in the developer admin page for each of your OAuth services, you should configure the callback URL to use a callback path of `{server}/api/auth/callback/{provider}`.
-
-e.g. For Google OAuth you would use: `http://localhost:3000/api/auth/callback/google`
-
-A list of configured providers and their callback URLs is available from the endpoint `api/auth/providers`. You can find more information at https://authjs.dev/getting-started/providers/oauth-tutorial
-
-1. You can also choose to specify an SMTP server for passwordless sign in via email.
-
-### 4. Start the application
-
-To run your site locally, use:
-
-```
-npm run dev
+```ini
+NEXTAUTH_SECRET=
+AUTH_GOOGLE_ID=
+AUTH_GOOGLE_SECRET=
 ```
 
-To run it in production mode, use:
+3. Create a free neo4j db (or use Docker) and then configure the neo4j connection in `auth.ts`:
+
+```typescript
+const driver = neo4j.driver(
+  "neo4j+s://<id>.databases.neo4j.io",
+  neo4j.auth.basic("neo4j", "password")
+)
+```
+
+4. Start a dev server with `npm run dev`, sign in, and then try to visit either `http://localhost:3000/server-example` or `http://localhost:3000/client-example`. Both will log the following error:
 
 ```
-npm run build
-npm run start
+ ✓ Compiled /server-example in 279ms (1698 modules)
+[auth][error] AdapterError: Read more at https://errors.authjs.dev#adaptererror
+[auth][cause]: Neo4jError: You cannot begin a transaction on a session with an open transaction; either run from within the transaction or use a different session.
+    at new Neo4jError (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/error.js:74:16)
+    at newError (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/error.js:106:12)
+    at Session._beginTransaction (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/session.js:404:40)
+    at eval (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/session.js:531:26)
+    at TransactionExecutor.eval (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/internal/transaction-executor.js:280:37)
+    at step (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/internal/transaction-executor.js:117:23)
+    at Object.eval [as next] (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/internal/transaction-executor.js:58:20)
+    at eval (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/internal/transaction-executor.js:36:71)
+    at new Promise (<anonymous>)
+    at __awaiter (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/internal/transaction-executor.js:18:12)
+    at TransactionExecutor._executeTransactionInsidePromise (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/internal/transaction-executor.js:268:16)
+    at eval (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/internal/transaction-executor.js:230:19)
+    at new Promise (<anonymous>)
+    at TransactionExecutor.execute (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/internal/transaction-executor.js:229:16)
+    at Session._runTransaction (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/session.js:530:42)
+    at Session.writeTransaction (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/session.js:526:21)
+    at write (webpack-internal:///(rsc)/./node_modules/@auth/neo4j-adapter/index.js:293:42)
+    at getSessionAndUser (webpack-internal:///(rsc)/./node_modules/@auth/neo4j-adapter/index.js:203:34)
+    at acc.<computed> (webpack-internal:///(rsc)/./node_modules/@auth/core/lib/init.js:170:30)
+    at Module.session (webpack-internal:///(rsc)/./node_modules/@auth/core/lib/actions/session.js:84:36)
+    at AuthInternal (webpack-internal:///(rsc)/./node_modules/@auth/core/lib/index.js:50:77)
+    at async Auth (webpack-internal:///(rsc)/./node_modules/@auth/core/index.js:123:29)
+    at async UserButton (webpack-internal:///(rsc)/./components/user-button.tsx:19:21)
+[auth][details]: {}
+[auth][error] SessionTokenError: Read more at https://errors.authjs.dev#sessiontokenerror
+[auth][cause]: Neo4jError: You cannot begin a transaction on a session with an open transaction; either run from within the transaction or use a different session.
+    at new Neo4jError (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/error.js:74:16)
+    at newError (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/error.js:106:12)
+    at Session._beginTransaction (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/session.js:404:40)
+    at eval (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/session.js:531:26)
+    at TransactionExecutor.eval (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/internal/transaction-executor.js:280:37)
+    at step (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/internal/transaction-executor.js:117:23)
+    at Object.eval [as next] (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/internal/transaction-executor.js:58:20)
+    at eval (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/internal/transaction-executor.js:36:71)
+    at new Promise (<anonymous>)
+    at __awaiter (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/internal/transaction-executor.js:18:12)
+    at TransactionExecutor._executeTransactionInsidePromise (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/internal/transaction-executor.js:268:16)
+    at eval (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/internal/transaction-executor.js:230:19)
+    at new Promise (<anonymous>)
+    at TransactionExecutor.execute (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/internal/transaction-executor.js:229:16)
+    at Session._runTransaction (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/session.js:530:42)
+    at Session.writeTransaction (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/session.js:526:21)
+    at write (webpack-internal:///(rsc)/./node_modules/@auth/neo4j-adapter/index.js:293:42)
+    at getSessionAndUser (webpack-internal:///(rsc)/./node_modules/@auth/neo4j-adapter/index.js:203:34)
+    at acc.<computed> (webpack-internal:///(rsc)/./node_modules/@auth/core/lib/init.js:170:30)
+    at Module.session (webpack-internal:///(rsc)/./node_modules/@auth/core/lib/actions/session.js:84:36)
+    at AuthInternal (webpack-internal:///(rsc)/./node_modules/@auth/core/lib/index.js:50:77)
+    at async Auth (webpack-internal:///(rsc)/./node_modules/@auth/core/index.js:123:29)
+    at async UserButton (webpack-internal:///(rsc)/./components/user-button.tsx:19:21)
+[auth][details]: {}
 ```
 
-### 5. Preparing for Production
 
-Follow the [Deployment documentation](https://authjs.dev/getting-started/deployment)
 
-## Acknowledgements
 
-<a href="https://vercel.com?utm_source=nextauthjs&utm_campaign=oss">
-<img width="170px" src="https://raw.githubusercontent.com/nextauthjs/next-auth/main/docs/static/img/powered-by-vercel.svg" alt="Powered By Vercel" />
-</a>
-<p align="left">Thanks to Vercel sponsoring this project by allowing it to be deployed for free for the entire NextAuth.js Team</p>
 
-## License
 
-ISC
+
+This is related to #5849, but perhaps distinct because it's occurring with `@auth/neo4j-adapter` and `next-auth` 5 (beta). After cloning the example app and adding in the neo4j adapter, I am able to login (using Google as a provider) and hit each of the example pages (RSC, client, protected API and middleware) to see that I'm successfully logged in. However, both the client and RSC pages raise the following error:
+
+```
+[auth][error] AdapterError: Read more at https://errors.authjs.dev#adaptererror
+[auth][cause]: Neo4jError: You cannot begin a transaction on a session with an open transaction; either run from within the transaction or use a different session.
+    at new Neo4jError (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/error.js:74:16)
+    at newError (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/error.js:106:12)
+    at Session._beginTransaction (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/session.js:404:40)
+    at eval (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/session.js:531:26)
+    at TransactionExecutor.eval (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/internal/transaction-executor.js:280:37)
+    at step (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/internal/transaction-executor.js:117:23)
+    at Object.eval [as next] (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/internal/transaction-executor.js:58:20)
+    at eval (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/internal/transaction-executor.js:36:71)
+    at new Promise (<anonymous>)
+    at __awaiter (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/internal/transaction-executor.js:18:12)
+    at TransactionExecutor._executeTransactionInsidePromise (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/internal/transaction-executor.js:268:16)
+    at eval (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/internal/transaction-executor.js:230:19)
+    at new Promise (<anonymous>)
+    at TransactionExecutor.execute (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/internal/transaction-executor.js:229:16)
+    at Session._runTransaction (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/session.js:530:42)
+    at Session.writeTransaction (webpack-internal:///(rsc)/./node_modules/neo4j-driver-core/lib/session.js:526:21)
+    at write (webpack-internal:///(rsc)/./node_modules/@auth/neo4j-adapter/index.js:293:42)
+    at getSessionAndUser (webpack-internal:///(rsc)/./node_modules/@auth/neo4j-adapter/index.js:203:34)
+    at acc.<computed> (webpack-internal:///(rsc)/./node_modules/@auth/core/lib/init.js:170:30)
+    at Module.session (webpack-internal:///(rsc)/./node_modules/@auth/core/lib/actions/session.js:84:36)
+    at AuthInternal (webpack-internal:///(rsc)/./node_modules/@auth/core/lib/index.js:50:77)
+    at async Auth (webpack-internal:///(rsc)/./node_modules/@auth/core/index.js:123:29)
+    at async UserButton (webpack-internal:///(rsc)/./components/user-button.tsx:19:21)
+[auth][details]: {}
+```
+
+As you can see, `const session = await auth()` in `UserButton` is causing the error. This is because `const session = await auth()` is also called within `app/server-example/page.tsx` as well as `app/client-example/page.tsx`. Comment out either of those calls in the pages, so that there's just one `const session = await auth()` occurring, and the error disappears. Only problem is, I'd like to be able to call `const session = await auth()` in both `UserButton.tsx` as well as within my pages. As the error message states, there's an issue with the session lifecycle within the Neo4jAdapter. As the [neo4j docs](https://neo4j.com/docs/javascript-manual/current/transactions/) state, "Session creation is a lightweight operation, so sessions can be created and destroyed without significant cost. Always close sessions when you are done with them.".
+
+I suspected the session wasn't being closed and then recreated since the adapter is passed in as `Neo4jAdapter(session)` instead of as `Neo4jAdapter(driver)`. Looking into `node_modules/@auth/neo4j-adapter/index.js`, I could see this is the case:
+
+```typescript
+export function Neo4jAdapter(session: Session): Adapter {
+  const { read, write } = client(session)
+  ...
+```
+
+Above, the session is passed to the `client` function, which manages the transactions. However, the session never gets closed. Editing the `.js` code locally, I was able to resolve the error by:
+
+1. Making the driver the argument to Neo4jAdapter (i.e., `export function Neo4jAdapter(session)` becomes `export function Neo4jAdapter(driver)`)
+2. Updating the client function to accept the driver instead of a session as its argument. That way we can create new lightweight sessions with each read/write transaction. I also ensured that the `read` and `write` functions close the session:
+
+```javascript
+function client(driver) {
+    return {
+        /** Reads values from the database */
+        async read(statement, values) {
+            const session = driver.session()
+            try {
+                const result = await session.executeRead((tx) => tx.run(statement, values));
+                return format.from(result?.records[0]?.get(0)) ?? null;
+            } finally {
+                session.close();  // closing the session
+            }
+        },
+        /**
+         * Reads/writes values from/to the database.
+         * Properties are available under `$data`
+         */
+        async write(statement, values) {
+            const session = driver.session()
+            try {
+                const result = await session.executeWrite((tx) => tx.run(statement, { data: format.to(values) }));
+                return format.from(result?.records[0]?.toObject());
+            } finally {
+                session.close();  // closing the session
+            }
+        },
+    };
+}
+```
+
+3. Scope down instantiation of the read/write functions within Neo4jAdapter, e.g.,
+
+```javascript
+export function Neo4jAdapter(driver) {
+    // const { read, write } = client(session)  // move this down
+    return {
+        async createUser(data) {
+            const { write } = client(driver)  // scope client (and session) instantiation to each adapter method
+            const user = { ...data, id: crypto.randomUUID() };
+            await write(`CREATE (u:User $data)`, user);
+            return user;
+        },
+        async getUser(id) {
+            const { read } = client(driver) // scope client (and session) instantiation to each adapter method
+            return await read(`MATCH (u:User { id: $id }) RETURN u{.*}`, {
+                id,
+            });
+        },
+        ...
+```
+
+After doing the above and performing a `rm -rf .next`, the error message goes away and the demo app runs swimmingly.
